@@ -1,59 +1,31 @@
 #!/bin/bash
 # EFI Partition Clone Script
-# (c) 2018 - Ted Howe
-# tedhowe@burke-howe.com
-# wombat94 on TonyMacx86 forums and GitHub.
-
-#Release Notes
-# version 0.1beta3
-# 2/24/2018
-# - Updated to use rsync to handle the deletion of information from the desination drive. Basically,
-#   allow rsync to do its thing
-# - Added additional check, based on clover boot log retrieved with bdmesg, to ensure that the
-#   destination EFI partition is NOT the EFI partition that was used to boot the computer.
-# version 0.1beta2
-# 2/23/2018
-# Clean up and combine.
-# -Combined the two versions of the script into a single script that detects whether it was called from
-#      Carbon Copy Cloner or SuperDuper! and behaves accordingly in the setup.
-# -Added validation of the copied data through SHASUM hashing of all visible files in the source and
-#      destination EFI partitions after the delete/rsync copy is complete
-# -Changed the method of copying files from cp to rsync
-# -Modified the copy path of the source to include the root directory - not just the /EFI/ directory
-#      and subdirectories.
-#----------------------------------------------------------------------------------------------------------
-# version 0.1beta1
-# 2/22/2018
-# Initial Release
-#----------------------------------------------------------------------------------------------------------
+# Created by Ted Howe (c) 2018 | tedhowe@burke-howe.com | wombat94 on GitHub   | wombat94 on TonyMacx86
+# Modified by kobaltcore 2019  | cobaltcore@yandex.com  | kobaltkore on GitHub | byteminer on TonyMacx86 forums
 
 # This script is designed to be a "post-flight" script run automatically by CCC at the end of a
 # clone task. It will copy the contents of the source drive's EFI partition to the destination drive's EFI
 # partition. It will COMPLETELY DELETE and replace all data on the destination EFI partition.
 
-#!!! This script DOES delete data and therefore has the potential to cause unintended data loss.
-# I have tried to think of any scenario that would cause unintended data loss, but as with all software, ther
-# may be bugs and therefore there is a small risk.
-# ONLY USE THIS SCRIPT IN THE MANNER DESCRIBED. I PROVIDE NO WARRANTY ON THE USE OF THIS SCRIPT
-# PROCEED AT YOUR OWN RISK.
+# THIS SCRIPT MODIFIES DATA AND AS SUCH CAN CAUSE DATA LOSS!
+# Use this at your own risk. We've tried to make it as safe as possible, but nobody's perfect.
 
-#user variables
 
-#Log File location. By default, this will write to the same directory where the cccEFIClone.sh script lives.
-# you may edit it, but be sure the location will always exist and you have permissions to write to the location
-# It appears that Carbon Copy Cloner runs the script in the root of the boot drive, so that is where the log will go
-# if you don't put in a literal path below.
-LOG_FILE="$PWD/EFIClone.log"
+### START USER VARIABLES ###
 
-#test switch. The script is distributed with this switch set to "Y".
-# the script will not delete or copy any data when this is set to Y
-# in order to make the script take action, once you have verified that it can identify the right locations to
-# copy from and to on your system, change this variable to N
+# Whether to run in LIVE or DEBUG mode. If this is "Y", this script will operate in dry-run mode, simply logging
+# what it would do without actually doing it.
+# Setting this to any other values (preferably "N") will switch to live mode, in which the operations will be executed.
 TEST_SWITCH="Y"
 
-#----- END OF USER VARIABLES
-#----- THERE IS NO NEED TO EDIT BELOW THIS LINE
-#----------------------------------------------
+# The location of the log file. Since the root partition is read-only in Catalina and higher
+# we write to the "Shared" folder instead.
+LOG_FILE="/Users/Shared/EFIClone.log"
+
+### STOP USER VARIABLES ###
+
+
+### Method Definitions ###
 
 function writeTolog () {
 	echo "[`date`] - ${*}" >> ${LOG_FILE}
@@ -80,12 +52,10 @@ function getDiskMountPoint () {
 }
 
 function getEFIDirectoryHash () {
-	#echo "$( find -s . -type f \( ! -iname ".*" \) -print0 | xargs -0 shasum | cut -d ' ' -f 1 | shasum  )"
 	echo "$( find -s . -not -path '*/\.*' -type f \( ! -iname ".*" \) -print0 | xargs -0 shasum | shasum )"
 }
 
 function logEFIDirectoryHashDetails () {
-	#echo "$( find -s . -type f \( ! -iname ".*" \) -print0 | xargs -0 shasum | cut -d ' ' -f 1 | shasum  )"
 	echo "$( find -s . -not -path '*/\.*' -type f \( ! -iname ".*" \) -print0 | xargs -0 shasum )" >> ${LOG_FILE}
 }
 
@@ -106,26 +76,32 @@ function getDiskIDfromUUID () {
 	echo "$( diskutil info "$1" | grep 'Device Identifier' | rev | cut -d ' ' -f 1 | rev )"
 }
 
-#begin logging
-writeTolog "***** EFI Clone Script start"
-writeTolog "working directory = $PWD"
+
+### Start Script ###
+
+writeTolog "***** EFI Clone Script Started *****"
+writeTolog "Working Directory = $PWD"
 writeTolog "Running $0"
 
-#determine which disk clone application called the script (based on number of parameters)
+# Determine which disk clone application called the script (based on number of parameters)
 # - log details
 # - set up initial parameters
-# - if possible do calling app-specific sanity checks in order to exit without taking action if necessary
-if [[ "$#" == "4" ]]; then
-	#log inputs to script
-	writeTolog "Called From Carbon Copy Cloner"
+# - if possible do app-specific sanity checks in order to exit without taking action if necessary
+if [[ "$#" == "2" ]]; then
+	writeTolog "Called From Shell with the following parameters:"
 	writeTolog "1: Source Path = $1"   # Source path
 	writeTolog "2: Destination Path = $2"   # Mounted disk image destination path
-	writeTolog "3: CCC Exit Status = $3"   # Exit status
-	writeTolog "4: Disk image file path = $4"  # Disk image file path
 
-	#sanity checks to determine whether to run
-	if [[ "$3" == "0" ]]
-	then
+	sourceVolume=$1
+	destinationVolume=$2
+elif [[ "$#" == "4" ]]; then
+	writeTolog "Called From Carbon Copy Cloner with the following parameters:"
+	writeTolog "1: Source Path = $1"
+	writeTolog "2: Destination Path = $2"
+	writeTolog "3: CCC Exit Status = $3"
+	writeTolog "4: Disk image file path = $4"
+
+	if [[ "$3" == "0" ]]; then
 		writeTolog "CCC completed with success, the EFI Clone Script will run"
 	else
 		writeTolog "CCC did not exit with success, the EFI Clone Script will not run"
@@ -133,8 +109,7 @@ if [[ "$#" == "4" ]]; then
 		exit 0
 	fi
 
-	if [[ "$4" == "" ]]
-	then
+	if [[ "$4" == "" ]]; then
 		writeTolog "CCC clone was not to a disk image. the EFI Clone Script will run"
 	else
 		writeTolog "CCC Clone destination was a disk image file. The EFI Clone Script will not run"
@@ -142,97 +117,107 @@ if [[ "$#" == "4" ]]; then
 		exit 0
 	fi
 
-	#set source and destination from variables passed in
 	sourceVolume=$1
 	destinationVolume=$2
-else
-	if [[ "$#" == "6" ]]; then
-		#log inputs to script
-		writeTolog "Called From SuperDuper!"
-		writeTolog "1: Source Disk Name = $1"
-		writeTolog "2: Source Mount Path = $2"
-		writeTolog "3: Destination Disk Name = $3"
-		writeTolog "4: Destination Mount Path = $4"
-		writeTolog "5: SuperDuper! Backup Script Used = $5"
-		writeTolog "6: Unused parameter 6 = $6"
+elif [[ "$#" == "6" ]]; then
+	writeTolog "Called From SuperDuper with the following parameters:"
+	writeTolog "1: Source Disk Name = $1"
+	writeTolog "2: Source Mount Path = $2"
+	writeTolog "3: Destination Disk Name = $3"
+	writeTolog "4: Destination Mount Path = $4"
+	writeTolog "5: SuperDuper! Backup Script Used = $5"
+	writeTolog "6: Unused parameter 6 = $6"
 
-		#set source and destination from variables passed in
-		sourceVolume=$2
-		destinationVolume=$4
-	else
-		#an unknown number of parameters have been passed in. log that fact and then exit
-		writeTolog "$# parameters were passed in. This is an unsupported number of parameters. Exiting now"
-		echo "$# parameters were passed in. This is an unsupported number of parameters. Exiting now"
-		osascript -e 'display notification "Unsupported set of parameters passed in. EFI Clone script did not run!" with title "EFI Clone Script"'
-		exit 0
-	fi
+	sourceVolume=$2
+	destinationVolume=$4
+else
+	writeTolog "$# parameters were passed in. This is an unsupported number of parameters. Exiting now"
+	echo "$# parameters were passed in. This is an unsupported number of parameters. Exiting now"
+	osascript -e 'display notification "Unsupported set of parameters passed in. EFI Clone script did not run!" with title "EFI Clone Script"'
+	exit 0
 fi
 
-writeTolog sourceVolume = $sourceVolume
+writeTolog "sourceVolume = $sourceVolume"
+
+
+### Figure out source target ###
 
 sourceVolumeDisk="$( getDiskNumber "$sourceVolume" )"
 
-writeTolog sourceVolumeDisk = $sourceVolumeDisk
+# If we can't figure out the path, we're probably running on Mojave or later, where CCC creates a temporary mount point
+# We use the help of "df" to output the volume of that mount point, afterwards it's business as usual
+if [[ "$sourceVolumeDisk" == "" ]]; then
+	sourceVolume=$( df "$sourceVolume" | grep /dev | cut -d ' ' -f 1 | cut -d '@' -f 2 )
+	sourceVolumeDisk="$( getDiskNumber "$sourceVolume" )"
+fi
 
-writeTolog destinationVolume = $destinationVolume
+# If it's still empty, we got passed an invalid path, so we exit
+if [[ "$sourceVolumeDisk" == "" ]]; then
+	writeTolog "sourceVolumeDisk could not be determined, script exiting."
+	osascript -e 'display notification "No sourceVolumeDisk found. EFI Clone Script did not run!." with title "EFI Clone Script"'
+	exit 0
+fi
+
+writeTolog "sourceVolumeDisk = $sourceVolumeDisk"
+
+writeTolog "destinationVolume = $destinationVolume"
 
 destinationVolumeDisk="$( getDiskNumber "$destinationVolume" )"
 
-writeTolog destinationVolumeDisk = $destinationVolumeDisk
+writeTolog "destinationVolumeDisk = $destinationVolumeDisk"
 sourceDisk=$sourceVolumeDisk
 sourceEFIPartition="$( getEFIVolume "$sourceDisk" )"
 
-#If we don't find an EFI partition on the disk that was identified by the volume path,
-# then check to see if it is a coreStoreage volume and get the disk number from there
+# If we don't find an EFI partition on the disk that was identified by the volume path
+# we check to see if it is a coreStorage volume and get the disk number from there
 if [[ "$sourceEFIPartition" == "" ]]; then
     sourceDisk=""
 	sourceDisk=disk"$( getCoreStoragePhysicalDiskNumber "$sourceVolumeDisk" )"
 	if [[ "$sourceDisk" == "disk" ]]; then
-		sourceDisk=""
 		sourceDisk=$sourceVolumeDisk
 	fi
 	sourceEFIPartition="$( getEFIVolume "$sourceDisk" )"
 fi
 
-#If we still don't have an EFI partition then look to see if the sourceVolumeDisk is an APFS
-# volume and find the physical disk
+# If we still don't have an EFI partition then we check to see if the sourceVolumeDisk is an APFS
+# volume and find its physical disk
 if [[ "$sourceEFIPartition" == "" ]]; then
     sourceDisk=""
 	sourceDisk=disk"$( getAPFSPhysicalDiskNumber "$sourceVolumeDisk" )"
 	sourceEFIPartition="$( getEFIVolume "$sourceDisk" )"
 fi
 
-writeTolog sourceEFIPartition = $sourceEFIPartition
+writeTolog "sourceEFIPartition = $sourceEFIPartition"
+
+
+### Figure out destination target ###
 
 destinationDisk=$destinationVolumeDisk
 destinationEFIPartition="$( getEFIVolume "$destinationDisk" )"
 
-#If we don't find an EFI partition on the disk that was identified by the volume path,
-# then check to see if it is a coreStoreage volume and get the disk number from there
+# If we don't find an EFI partition on the disk that was identified by the volume path
+# we check to see if it is a coreStorage volume and get the disk number from there
 if [[ "$destinationEFIPartition" == "" ]]; then
 	destinationDisk=""
 	destinationDisk=disk"$( getCoreStoragePhysicalDiskNumber "$destinationVolumeDisk" )"
 	if [[ "$destinationDisk" == "disk" ]];	then
-		destinationDisk=""
 		destinationDisk=$destinationVolumeDisk
 	fi
 	destinationEFIPartition="$( getEFIVolume "$destinationDisk" )"
 fi
 
-#If we still don't have an EFI partition then look to see if the sourceVolumeDisk is an APFS
-# volume and find the physical disk
+# If we still don't have an EFI partition then we check to see if the destinationVolumeDisk is an APFS
+# volume and find its physical disk
 if [[ "$destinationEFIPartition" == "" ]]; then
 	destinationDisk=""
 	destinationDisk=disk"$( getAPFSPhysicalDiskNumber "$destinationVolumeDisk" )"
 	destinationEFIPartition="$( getEFIVolume "$destinationDisk" )"
 fi
 
-writeTolog destinationEFIPartition = $destinationEFIPartition
+writeTolog "destinationEFIPartition = $destinationEFIPartition"
 
-efiBootPartitionUUID="$( getCurrentBootEFIVolumeUUID )"
-writeTolog "efiBootPartitionUUID = $efiBootPartitionUUID"
-efiBootPartionDisk="$( getDeviceIDfromUUID "$efiBootPartitionUUID" )"
-writeTolog "efiBootPartitionDisk = $efiBootPartionDisk"
+
+### Sanity checks ###
 
 if [[ "$efiBootPartitionDisk" == "$destinationDisk" ]]; then
 	writeTolog "Destination disk is the current EFI partition that was used to boot the computer, script exiting."
@@ -257,14 +242,20 @@ if [[ "$sourceEFIPartition" == "$destinationEFIPartition" ]]; then
 	exit 0
 fi
 
+
+### Mount the targets ###
+
 diskutil mount /dev/$sourceEFIPartition
 diskutil mount /dev/$destinationEFIPartition
-writeTolog "drives Mounted"
+writeTolog "Drives mounted"
 sourceEFIMountPoint="$( getDiskMountPoint "$sourceEFIPartition" )"
-writeTolog sourceEFIMountPoint = $sourceEFIMountPoint
+writeTolog "sourceEFIMountPoint = $sourceEFIMountPoint"
 
 destinationEFIMountPoint="$( getDiskMountPoint "$destinationEFIPartition" )"
-writeTolog destinationEFIMountPoint = $destinationEFIMountPoint
+writeTolog "destinationEFIMountPoint = $destinationEFIMountPoint"
+
+
+### Execute the synchronization ###
 
 if [[ "$TEST_SWITCH" == "Y" ]]; then
 	writeTolog "********* Test simulation - file delete/copy would happen here. "
