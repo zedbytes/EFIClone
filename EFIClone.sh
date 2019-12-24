@@ -26,6 +26,9 @@ LOG_FILE="/Users/Shared/EFIClone.log"
 
 
 ### Method Definitions ###
+if [[ -f "$LOG_FILE" ]]; then
+	rm $LOG_FILE
+fi
 
 function writeTolog () {
 	echo "[`date`] - ${*}" >> ${LOG_FILE}
