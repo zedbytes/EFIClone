@@ -245,6 +245,19 @@ if [[ "$sourceEFIPartition" == "$destinationEFIPartition" ]]; then
 	exit 0
 fi
 
+sourceEFIPartitionSplit=($sourceEFIPartition)
+if [ "${#sourceEFIPartitionSplit[@]}" -gt 1 ]; then
+	writeTolog "More than one source partition. Script exiting."
+	osascript -e 'display notification "More than one source partition. EFI Clone Script did not run!." with title "EFI Clone Script"'
+    exit 0
+fi
+
+destinationEFIPartitionSplit=($destinationEFIPartition)
+if [ "${#destinationEFIPartitionSplit[@]}" -gt 1 ]; then
+	writeTolog "More than one destination partition. Script exiting."
+	osascript -e 'display notification "More than one destination partition. EFI Clone Script did not run!." with title "EFI Clone Script"'
+    exit 0
+fi
 
 ### Mount the targets ###
 
