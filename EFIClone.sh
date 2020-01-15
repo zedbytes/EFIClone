@@ -47,7 +47,7 @@ function getAPFSPhysicalDiskNumber () {
 }
 
 function getEFIVolume () {
-	echo "$( diskutil list | grep "$1" | grep "EFI" | rev | cut -d ' ' -f 1 | rev )"
+	echo "$( diskutil list | grep "$1s" | grep "EFI" | rev | cut -d ' ' -f 1 | rev )"
 }
 
 function getDiskMountPoint () {
