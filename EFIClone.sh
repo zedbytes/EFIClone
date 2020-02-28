@@ -43,7 +43,7 @@ function getCoreStoragePhysicalDiskNumber () {
 }
 
 function getAPFSPhysicalDiskNumber () {
-	echo "$( diskutil apfs list | grep -A 9 "Container $1" | grep "APFS Physical Store" | rev | cut -d ' ' -f 1 | cut -d 's' -f 2 | cut -d 'k' -f 1 )"
+	echo "$( diskutil apfs list | grep -A 9 "Container $1 " | grep "APFS Physical Store" | rev | cut -d ' ' -f 1 | cut -d 's' -f 2 | cut -d 'k' -f 1 )"
 }
 
 function getEFIVolume () {
