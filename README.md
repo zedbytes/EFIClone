@@ -2,6 +2,13 @@
 
 `EFIClone` is a macOS bash shell script for Hackintosh machines that is designed to integrate with either Carbon Copy Cloner or SuperDuper! - the two most popular macOS disk cloning utilities.
 
+<hr>
+
+## Notice!
+In the middle of June 2020, `EFIClone` was rewritten from the ground up to follow a more clear and standardized approach to bash scripting. The revamped version is available is available as [`EFIClone_v2.sh`](https://github.com/kobaltcore/EFIClone/blob/master/EFIClone_v2.sh). While it has been tested (and should functionally be the same as `EFIClone` v1), this is an opt-in upgrade for now. This new version is what will be maintained going forward and the plan is to eventually completely switch over to `EFIClone` v2.
+
+<hr>
+
 CCC and SD! will both automatically create bootable clones on real Macintoshes in a single step. Though modern Macs support EFI booting in order to maintain compatibility with running non-Apple operating system on their hardware, they do NOT need the EFI partition in order to boot macOS. Because of this these disk cloning utilities do not copy the contents of the secondary EFI partition from one drive to another when doing their job.
 
 This is where `EFIClone` comes in.
