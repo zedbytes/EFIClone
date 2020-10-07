@@ -359,7 +359,7 @@ function get_core_storage_physical_disk_number() {
 }
 
 function get_apfs_physical_disk_number() {
-    echo "$(diskutil apfs list | grep -A 9 "Container $1 " | grep "APFS Physical Store" | rev | cut -d ' ' -f 1 | cut -d 's' -f 2 | cut -d 'k' -f 1)"
+    echo "$(diskutil apfs list | grep -A 9 "Container $1 " | grep "APFS Physical Store" | rev | cut -d ' ' -f 1 | cut -d 's' -f 2 | cut -d 'k' -f 1 | rev)"
 }
 
 function get_disk_mount_point() {
