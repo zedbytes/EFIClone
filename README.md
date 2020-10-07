@@ -5,7 +5,7 @@
 <hr>
 
 ## Notice!
-In the middle of June 2020, `EFIClone` was rewritten from the ground up to follow a more clear and standardized approach to bash scripting. The revamped version is available is available as [`EFIClone_v2.sh`](https://github.com/kobaltcore/EFIClone/blob/master/EFIClone_v2.sh). While it has been tested (and should functionally be the same as `EFIClone` v1), this is an opt-in upgrade for now. This new version is what will be maintained going forward and the plan is to eventually completely switch over to `EFIClone` v2.
+In the middle of June 2020, `EFIClone` was rewritten from the ground up to follow a more clear and standardized approach to bash scripting. The revamped version is now available as the main [`EFIClone.sh`](https://github.com/kobaltcore/EFIClone/blob/master/EFIClone.sh). It has been tested for quite a while and found to be stable. The old version can be accessed via Git history in this repository, if need be.
 
 <hr>
 
