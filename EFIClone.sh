@@ -10,7 +10,7 @@ if [[ ${DEBUG-} =~ ^1|yes|true$ ]]; then
 fi
 
 TEST_SWITCH="N"
-LOG_FILE_PATH="/Users/Shared/EFIClone.log"
+LOG_FILE_PATH="$PWD/EFIClone.log"
 
 set -o errexit          # Exit on most errors (see the manual)
 set -o errtrace         # Make sure any error trap is inherited
@@ -542,17 +542,17 @@ function main() {
     fi
 
     pushd "$source_efi_mount_point/" > /dev/null
-    source_efi_hash="$(get_efi_directory_hash "$source_efi_mount_point")"
+    source_efi_hash='$(get_efi_directory_hash "$source_efi_mount_point")'
     popd  > /dev/null
     pushd "$destination_efi_mount_point/"  > /dev/null
-    destination_efi_hash="$(get_efi_directory_hash "$destination_efi_mount_point")"
+    destination_efi_hash='$(get_efi_directory_hash "$destination_efi_mount_point")'
     popd > /dev/null
 
     verbose_print "Source EFI Hash: $source_efi_hash"
     verbose_print "Destination EFI Hash: $destination_efi_hash"
 
-    diskutil quiet unmount "/dev/$destination_efi_partition"
-    diskutil quiet unmount "/dev/$source_efi_partition"
+    diskutil quiet unmountDisk "/dev/$destination_efi_partition"
+    diskutil quiet unmountDisk "/dev/$source_efi_partition"
 
     if [[ "$source_efi_hash" == "$destination_efi_hash" ]]; then
         if [[ "$TEST_SWITCH" == "Y" ]]; then
